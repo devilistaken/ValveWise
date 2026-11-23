@@ -36,7 +36,7 @@ ReachabilityResult graph_bfs(const Graph *g) {
         for (Edge *e = g->nodes[u].adj;
              e; e = e->next) {
 
-            if (g->pipes[e->pipe_index].failed)
+            if (g->pipes[e->pipe_index].status != LINK_OPEN)
                 continue;
 
             int v = e->neighbor;
@@ -58,7 +58,7 @@ static void dfs_visit(const Graph *g, int u,
     for (Edge *e = g->nodes[u].adj;
          e; e = e->next) {
 
-        if (g->pipes[e->pipe_index].failed)
+        if (g->pipes[e->pipe_index].status != LINK_OPEN)
             continue;
 
         int v = e->neighbor;

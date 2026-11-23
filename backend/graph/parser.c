@@ -14,7 +14,8 @@ typedef enum {
     TANKS,
     PIPES,
     PUMPS,
-    VALVES
+    VALVES,
+    COORDINATES
 } Section;
 
 static Section get_section(const char *name) {
@@ -24,6 +25,7 @@ static Section get_section(const char *name) {
     if (!strcmp(name, "[PIPES]")) return PIPES;
     if (!strcmp(name, "[PUMPS]")) return PUMPS;
     if (!strcmp(name, "[VALVES]")) return VALVES;
+    if (!strcmp(name, "[COORDINATES]")) return COORDINATES;
     return NONE;
 }
 
@@ -76,7 +78,7 @@ Graph *parse_epanet(const char *filename) {
     char line[2048];
     char *t[32];
 
-    for (int pass = 0; pass < 2; pass++) {
+    for (int pass = 0; pass < 3; pass++) {
         rewind(file);
         Section section = NONE;
         int line_number = 0;
@@ -141,7 +143,7 @@ Graph *parse_epanet(const char *filename) {
                 if (index < 0 ||
                     !hash_put(nodes, t[0], index))
                     goto bad_line;
-            } else {
+            } else if (pass == 1) {
                 if (section != PIPES &&
                     section != PUMPS &&
                     section != VALVES)
@@ -173,6 +175,21 @@ Graph *parse_epanet(const char *filename) {
 
                 if (index < 0 ||
                     !hash_put(links, t[0], index))
+                    goto bad_line;
+
+                if (section == PUMPS)
+                    graph_set_link_type(g, t[0], LINK_PUMP);
+                else if (section == VALVES)
+                    graph_set_link_type(g, t[0], LINK_VALVE);
+            } else {
+                if (section != COORDINATES) continue;
+                if (n < 3) goto bad_line;
+
+                double x, y;
+
+                if (!parse_number(t[1], &x) ||
+                    !parse_number(t[2], &y) ||
+                    !graph_set_coordinates(g, t[0], x, y))
                     goto bad_line;
             }
 
