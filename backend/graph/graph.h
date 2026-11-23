@@ -1,8 +1,8 @@
 #ifndef GRAPH_H
 #define GRAPH_H
 
-#define MAX_NODES 1000
-#define MAX_PIPES 5000
+#define MAX_NODES 5000
+#define MAX_PIPES 20000
 #define ID_LEN 64
 
 typedef struct Edge {

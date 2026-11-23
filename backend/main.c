@@ -1,45 +1,52 @@
 #include <stdio.h>
+#include <stdlib.h>
+
 #include "graph/graph.h"
+#include "graph/parser.h"
 #include "graph/traversal.h"
 #include "simulation/failure.h"
 
 static void report(const Graph *g) {
-    ReachabilityResult r = graph_bfs(g);
+    ReachabilityResult bfs = graph_bfs(g);
+    ReachabilityResult dfs = graph_dfs(g);
 
-    printf("\nConnected junctions: %d\n",
-           r.connected_count);
-    printf("Disconnected junctions: %d\n",
-           r.disconnected_count);
+    printf("\nNetwork Connectivity Report\n");
+    printf("---------------------------\n");
+    printf("Connected nodes: %d\n", bfs.connected_count);
+    printf("Disconnected nodes: %d\n",
+           bfs.disconnected_count);
     printf("Disconnected demand: %.2f\n",
-           r.disconnected_demand);
+           bfs.disconnected_demand);
+
+    if (bfs.connected_count != dfs.connected_count ||
+        bfs.disconnected_count != dfs.disconnected_count) {
+        fprintf(stderr, "BFS/DFS mismatch!\n");
+        exit(EXIT_FAILURE);
+    }
 }
 
-int main(void) {
-    Graph *g = graph_create();
-    if (!g) return 1;
+int main(int argc, char *argv[]) {
+    const char *filename =
+        argc >= 2 ? argv[1] : "datasets/Net3.inp";
 
-    int source = graph_add_node(g, "SOURCE", 0, 1);
-    int a = graph_add_node(g, "A", 10, 0);
-    int b = graph_add_node(g, "B", 20, 0);
-    int c = graph_add_node(g, "C", 30, 0);
-    int d = graph_add_node(g, "D", 40, 0);
+    Graph *g = parse_epanet(filename);
+    if (!g) return EXIT_FAILURE;
 
-    graph_add_pipe(g, "P1", source, a, 100);
-    graph_add_pipe(g, "P2", a, b, 80);
-    graph_add_pipe(g, "P3", b, c, 90);
-    graph_add_pipe(g, "P4", b, d, 70);
-
-    graph_print(g);
-
-    printf("\nBEFORE FAILURE");
     report(g);
 
-    printf("\nSimulating pipe P2 failure...\n");
-    fail_pipe(g, "P2");
+    if (argc >= 3) {
+        const char *pipe_id = argv[2];
 
-    printf("\nAFTER FAILURE");
-    report(g);
+        if (!fail_pipe(g, pipe_id)) {
+            fprintf(stderr, "Unknown link: %s\n", pipe_id);
+            graph_free(g);
+            return EXIT_FAILURE;
+        }
+
+        printf("\nSimulated failure: %s\n", pipe_id);
+        report(g);
+    }
 
     graph_free(g);
-    return 0;
+    return EXIT_SUCCESS;
 }
