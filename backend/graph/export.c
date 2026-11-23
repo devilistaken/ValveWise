@@ -1,5 +1,6 @@
 #include "export.h"
 #include "traversal.h"
+#include "analysis.h"
 #include <stdio.h>
 
 static const char *type_name(LinkType type) {
@@ -116,8 +117,22 @@ int graph_export_json_state(
             i + 1 < graph->pipe_count ? "," : "");
     }
 
+    NetworkAnalysis analysis =
+        graph_analyze(graph, &result);
+
     fprintf(file,
         "  ],\n"
+        "  \"analysis\": {\n"
+        "    \"total_junctions\": %d,\n"
+        "    \"connected_junctions\": %d,\n"
+        "    \"disconnected_junctions\": %d,\n"
+        "    \"source_count\": %d,\n"
+        "    \"total_demand\": %.10g,\n"
+        "    \"connected_demand\": %.10g,\n"
+        "    \"disconnected_demand\": %.10g,\n"
+        "    \"junction_connectivity_percent\": %.6f,\n"
+        "    \"demand_connectivity_percent\": %.6f\n"
+        "  },\n"
         "  \"summary\": {\n"
         "    \"total_nodes\": %d,\n"
         "    \"total_links\": %d,\n"
@@ -125,6 +140,15 @@ int graph_export_json_state(
         "    \"disconnected_nodes\": %d,\n"
         "    \"disconnected_demand\": %.10g\n"
         "  }\n}\n",
+        analysis.total_junctions,
+        analysis.connected_junctions,
+        analysis.disconnected_junctions,
+        analysis.source_count,
+        analysis.total_demand,
+        analysis.connected_demand,
+        analysis.disconnected_demand,
+        analysis.junction_connectivity_percent,
+        analysis.demand_connectivity_percent,
         graph->node_count,
         graph->pipe_count,
         result.connected_count,

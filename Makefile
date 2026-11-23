@@ -5,7 +5,7 @@ GRAPH = backend/graph/graph.c backend/graph/hash.c
 TRAVERSAL = backend/graph/traversal.c backend/simulation/state.c
 FAILURE = backend/simulation/failure.c
 PARSER = backend/graph/parser.c
-EXPORT = backend/graph/export.c
+EXPORT = backend/graph/export.c backend/graph/analysis.c
 
 ENGINE = $(GRAPH) $(TRAVERSAL) $(FAILURE) $(PARSER) $(EXPORT)
 
@@ -42,3 +42,9 @@ benchmark: build/benchmark_graph
 
 clean:
 	rm -rf build
+
+build/test_advanced: tests/test_advanced.c $(GRAPH) $(TRAVERSAL) backend/graph/analysis.c | build
+	$(CC) $(CFLAGS) $^ -o $@
+
+test-advanced: build/test_advanced
+	./build/test_advanced

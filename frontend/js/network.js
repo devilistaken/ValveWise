@@ -103,6 +103,26 @@ async function loadNetwork() {
 
 function updateMetrics() {
     const summary = state.data.summary;
+    const analysis = state.data.analysis;
+
+    if (analysis) {
+        $("junctionCount").textContent =
+            formatNumber(analysis.total_junctions);
+
+        $("sourceCount").textContent =
+            formatNumber(analysis.source_count);
+
+        $("junctionsLost").textContent =
+            formatNumber(analysis.disconnected_junctions);
+
+        $("junctionPercent").textContent =
+            analysis.junction_connectivity_percent.toFixed(1) + "%";
+
+        $("demandPercent").textContent =
+            analysis.demand_connectivity_percent.toFixed(1) + "%";
+    }
+
+
 
     $("totalNodes").textContent =
         formatNumber(summary.total_nodes);
