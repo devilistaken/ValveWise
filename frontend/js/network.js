@@ -83,6 +83,10 @@ async function loadNetwork() {
         updateDetails();
         renderGraph();
 
+        if (window.ValveWiseComparison) {
+            window.ValveWiseComparison.update(result);
+        }
+
         showStatus(
             state.failure || state.closures
                 ? "Scenario analyzed by C engine"
