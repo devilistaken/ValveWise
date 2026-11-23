@@ -36,8 +36,22 @@
 
             <select id="pipeSelect" size="7"></select>
 
+            <label for="multiFailures">Failed link IDs (comma-separated)</label>
+            <input id="multiFailures"
+                   placeholder="e.g. P1,P3"
+                   autocomplete="off">
+
+            <label for="closedLinks">Proposed closed link IDs</label>
+            <input id="closedLinks"
+                   placeholder="e.g. P2"
+                   autocomplete="off">
+
             <button id="simulateBtn" class="primary">
                 Simulate Pipe Failure
+            </button>
+
+            <button id="runScenarioBtn" class="secondary">
+                Run Multi-Link Scenario
             </button>
 
             <button id="resetBtn" class="secondary">

@@ -11,93 +11,112 @@ static const char *type_name(LinkType type) {
     }
 }
 
-static const char *status_name(LinkStatus status) {
-    switch (status) {
-        case LINK_OPEN: return "open";
-        case LINK_CLOSED: return "closed";
-        case LINK_FAILED: return "failed";
-        default: return "unknown";
-    }
+static const char *status_name(
+    const Graph *graph,
+    const NetworkState *state,
+    int index
+) {
+    if (state && state->failed[index])
+        return "failed";
+
+    if (graph->pipes[index].status == LINK_FAILED)
+        return "failed";
+
+    if ((state && state->closed[index]) ||
+        graph->pipes[index].status == LINK_CLOSED)
+        return "closed";
+
+    return "open";
 }
 
-static void json_string(FILE *f, const char *s) {
-    fputc('"', f);
+static void json_string(FILE *file, const char *str) {
+    fputc('"', file);
 
-    for (; *s; s++) {
-        unsigned char c = (unsigned char)*s;
+    for (; *str; str++) {
+        unsigned char c = (unsigned char)*str;
 
         if (c == '"' || c == '\\') {
-            fputc('\\', f);
-            fputc(c, f);
+            fputc('\\', file);
+            fputc(c, file);
         } else if (c < 32) {
-            fprintf(f, "\\u%04x", c);
+            fprintf(file, "\\u%04x", c);
         } else {
-            fputc(c, f);
+            fputc(c, file);
         }
     }
 
-    fputc('"', f);
+    fputc('"', file);
 }
 
-int graph_export_json(const Graph *g, const char *filename) {
-    if (!g || !filename) return 0;
+int graph_export_json_state(
+    const Graph *graph,
+    const NetworkState *state,
+    const char *filename
+) {
+    if (!graph || !filename) return 0;
 
-    FILE *f = fopen(filename, "w");
-    if (!f) return 0;
+    FILE *file = fopen(filename, "w");
+    if (!file) return 0;
 
-    ReachabilityResult r = graph_bfs(g);
+    ReachabilityResult result = graph_bfs_state(
+        graph, state
+    );
 
-    fprintf(f, "{\n  \"nodes\": [\n");
+    fprintf(file, "{\n  \"nodes\": [\n");
 
-    for (int i = 0; i < g->node_count; i++) {
-        const Node *n = &g->nodes[i];
+    for (int i = 0; i < graph->node_count; i++) {
+        const Node *node = &graph->nodes[i];
 
-        fprintf(f, "    {\"id\": ");
-        json_string(f, n->id);
+        fprintf(file, "    {\"id\": ");
+        json_string(file, node->id);
 
-        fprintf(f,
-            ", \"demand\": %.10g, \"source\": %s,"
-            " \"reachable\": %s, \"x\": %.10g,"
-            " \"y\": %.10g, \"has_coordinates\": %s}",
-            n->demand,
-            n->is_source ? "true" : "false",
-            r.reachable[i] ? "true" : "false",
-            n->x, n->y,
-            n->has_coordinates ? "true" : "false"
+        fprintf(file,
+            ", \"demand\": %.10g,"
+            " \"source\": %s,"
+            " \"reachable\": %s,"
+            " \"x\": %.10g,"
+            " \"y\": %.10g,"
+            " \"has_coordinates\": %s}",
+            node->demand,
+            node->is_source ? "true" : "false",
+            result.reachable[i] ? "true" : "false",
+            node->x,
+            node->y,
+            node->has_coordinates ? "true" : "false"
         );
 
-        fprintf(f, "%s\n",
-                i + 1 < g->node_count ? "," : "");
+        fprintf(file, "%s\n",
+            i + 1 < graph->node_count ? "," : "");
     }
 
-    fprintf(f, "  ],\n  \"links\": [\n");
+    fprintf(file, "  ],\n  \"links\": [\n");
 
-    for (int i = 0; i < g->pipe_count; i++) {
-        const Pipe *p = &g->pipes[i];
+    for (int i = 0; i < graph->pipe_count; i++) {
+        const Pipe *link = &graph->pipes[i];
 
-        fprintf(f, "    {\"id\": ");
-        json_string(f, p->id);
+        fprintf(file, "    {\"id\": ");
+        json_string(file, link->id);
 
-        fprintf(f, ", \"source\": ");
-        json_string(f, g->nodes[p->from].id);
+        fprintf(file, ", \"source\": ");
+        json_string(file, graph->nodes[link->from].id);
 
-        fprintf(f, ", \"target\": ");
-        json_string(f, g->nodes[p->to].id);
+        fprintf(file, ", \"target\": ");
+        json_string(file, graph->nodes[link->to].id);
 
-        fprintf(f, ", \"type\": ");
-        json_string(f, type_name(p->type));
+        fprintf(file, ", \"type\": ");
+        json_string(file, type_name(link->type));
 
-        fprintf(f, ", \"status\": ");
-        json_string(f, status_name(p->status));
+        fprintf(file, ", \"status\": ");
+        json_string(file, status_name(graph, state, i));
 
-        fprintf(f, ", \"length\": %.10g}",
-                p->length);
+        fprintf(file, ", \"length\": %.10g}",
+            link->length);
 
-        fprintf(f, "%s\n",
-                i + 1 < g->pipe_count ? "," : "");
+        fprintf(file, "%s\n",
+            i + 1 < graph->pipe_count ? "," : "");
     }
 
-    fprintf(f,
+    fprintf(file,
         "  ],\n"
         "  \"summary\": {\n"
         "    \"total_nodes\": %d,\n"
@@ -106,15 +125,23 @@ int graph_export_json(const Graph *g, const char *filename) {
         "    \"disconnected_nodes\": %d,\n"
         "    \"disconnected_demand\": %.10g\n"
         "  }\n}\n",
-        g->node_count,
-        g->pipe_count,
-        r.connected_count,
-        r.disconnected_count,
-        r.disconnected_demand
+        graph->node_count,
+        graph->pipe_count,
+        result.connected_count,
+        result.disconnected_count,
+        result.disconnected_demand
     );
 
-    int ok = !ferror(f);
-    if (fclose(f) != 0) ok = 0;
+    int success = !ferror(file);
+    if (fclose(file) != 0)
+        success = 0;
 
-    return ok;
+    return success;
+}
+
+int graph_export_json(
+    const Graph *graph,
+    const char *filename
+) {
+    return graph_export_json_state(graph, NULL, filename);
 }

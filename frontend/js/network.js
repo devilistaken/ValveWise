@@ -7,6 +7,7 @@ const state = {
     data: null,
     selectedPipe: null,
     failure: null,
+    closures: null,
     positions: new Map(),
     zoom: 1,
     centerX: 500,
@@ -34,6 +35,7 @@ function setLoading(loading) {
     $("graphLoading").classList.toggle("hidden", !loading);
     $("simulateBtn").disabled = loading;
     $("resetBtn").disabled = loading;
+    $("runScenarioBtn").disabled = loading;
 }
 
 function formatNumber(value) {
@@ -46,7 +48,8 @@ async function loadNetwork() {
     const request = ++state.requestNumber;
     const params = new URLSearchParams({
         dataset: state.dataset,
-        failure: state.failure || "-"
+        failures: state.failure || "-",
+        closures: state.closures || "-"
     });
 
     setLoading(true);
@@ -81,8 +84,8 @@ async function loadNetwork() {
         renderGraph();
 
         showStatus(
-            state.failure
-                ? `Failure ${state.failure} simulated successfully`
+            state.failure || state.closures
+                ? "Scenario analyzed by C engine"
                 : "Network operating normally"
         );
 
@@ -392,6 +395,9 @@ function changeZoom(factor) {
 $("dataset").addEventListener("change", event => {
     state.dataset = event.target.value;
     state.failure = null;
+    state.closures = null;
+    $("multiFailures").value = "";
+    $("closedLinks").value = "";
     state.selectedPipe = null;
     state.zoom = 1;
     $("pipeSearch").value = "";
@@ -414,11 +420,51 @@ $("simulateBtn").addEventListener("click", () => {
     }
 
     state.failure = state.selectedPipe;
+    state.closures = null;
+    $("multiFailures").value = state.selectedPipe;
+    $("closedLinks").value = "";
+    loadNetwork();
+});
+
+$("runScenarioBtn").addEventListener("click", () => {
+    const failures = $("multiFailures").value
+        .split(",").map(x => x.trim()).filter(Boolean);
+
+    const closures = $("closedLinks").value
+        .split(",").map(x => x.trim()).filter(Boolean);
+
+    if (!failures.length && !closures.length) {
+        showStatus("Enter at least one failure or closure.");
+        return;
+    }
+
+    const links = new Set(
+        state.data.links.map(link => link.id)
+    );
+
+    const all = [...failures, ...closures];
+
+    if (all.some(id => !links.has(id))) {
+        showStatus("One or more link IDs are invalid.");
+        return;
+    }
+
+    if (new Set(all).size !== all.length) {
+        showStatus("Link IDs must not repeat or conflict.");
+        return;
+    }
+
+    state.failure = failures.join(",") || null;
+    state.closures = closures.join(",") || null;
+
     loadNetwork();
 });
 
 $("resetBtn").addEventListener("click", () => {
     state.failure = null;
+    state.closures = null;
+    $("multiFailures").value = "";
+    $("closedLinks").value = "";
     loadNetwork();
 });
 

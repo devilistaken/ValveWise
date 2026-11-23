@@ -1,83 +1,110 @@
+#include <stddef.h>
 #include "traversal.h"
-#include <string.h>
 
 static ReachabilityResult summarize(
-    const Graph *g, ReachabilityResult result) {
-
-    for (int i = 0; i < g->node_count; i++) {
+    const Graph *graph,
+    ReachabilityResult result
+) {
+    for (int i = 0; i < graph->node_count; i++) {
         if (result.reachable[i]) {
             result.connected_count++;
         } else {
             result.disconnected_count++;
-            result.disconnected_demand += g->nodes[i].demand;
+            result.disconnected_demand +=
+                graph->nodes[i].demand;
         }
     }
 
     return result;
 }
 
-ReachabilityResult graph_bfs(const Graph *g) {
+ReachabilityResult graph_bfs_state(
+    const Graph *graph,
+    const NetworkState *state
+) {
     ReachabilityResult result = {0};
-    if (!g) return result;
+    if (!graph) return result;
 
     int queue[MAX_NODES];
-    int front = 0, rear = 0;
+    int front = 0;
+    int rear = 0;
 
-    for (int i = 0; i < g->node_count; i++) {
-        if (g->nodes[i].is_source) {
+    for (int i = 0; i < graph->node_count; i++) {
+        if (graph->nodes[i].is_source) {
             result.reachable[i] = 1;
             queue[rear++] = i;
         }
     }
 
     while (front < rear) {
-        int u = queue[front++];
+        int current = queue[front++];
 
-        for (Edge *e = g->nodes[u].adj;
-             e; e = e->next) {
+        for (Edge *edge = graph->nodes[current].adj;
+             edge;
+             edge = edge->next) {
 
-            if (g->pipes[e->pipe_index].status != LINK_OPEN)
+            if (!network_state_link_open(
+                    graph, state, edge->pipe_index))
                 continue;
 
-            int v = e->neighbor;
+            int neighbor = edge->neighbor;
 
-            if (!result.reachable[v]) {
-                result.reachable[v] = 1;
-                queue[rear++] = v;
+            if (!result.reachable[neighbor]) {
+                result.reachable[neighbor] = 1;
+                queue[rear++] = neighbor;
             }
         }
     }
 
-    return summarize(g, result);
+    return summarize(graph, result);
 }
 
-static void dfs_visit(const Graph *g, int u,
-                      ReachabilityResult *result) {
-    result->reachable[u] = 1;
+ReachabilityResult graph_dfs_state(
+    const Graph *graph,
+    const NetworkState *state
+) {
+    ReachabilityResult result = {0};
+    if (!graph) return result;
 
-    for (Edge *e = g->nodes[u].adj;
-         e; e = e->next) {
+    int stack[MAX_NODES];
+    int top = 0;
 
-        if (g->pipes[e->pipe_index].status != LINK_OPEN)
+    for (int source = 0; source < graph->node_count; source++) {
+        if (!graph->nodes[source].is_source ||
+            result.reachable[source])
             continue;
 
-        int v = e->neighbor;
+        result.reachable[source] = 1;
+        stack[top++] = source;
 
-        if (!result->reachable[v])
-            dfs_visit(g, v, result);
-    }
-}
+        while (top > 0) {
+            int current = stack[--top];
 
-ReachabilityResult graph_dfs(const Graph *g) {
-    ReachabilityResult result = {0};
-    if (!g) return result;
+            for (Edge *edge = graph->nodes[current].adj;
+                 edge;
+                 edge = edge->next) {
 
-    for (int i = 0; i < g->node_count; i++) {
-        if (g->nodes[i].is_source &&
-            !result.reachable[i]) {
-            dfs_visit(g, i, &result);
+                if (!network_state_link_open(
+                        graph, state, edge->pipe_index))
+                    continue;
+
+                int neighbor = edge->neighbor;
+
+                if (!result.reachable[neighbor]) {
+                    result.reachable[neighbor] = 1;
+                    stack[top++] = neighbor;
+                }
+            }
         }
     }
 
-    return summarize(g, result);
+    return summarize(graph, result);
+}
+
+ReachabilityResult graph_bfs(const Graph *graph) {
+    return graph_bfs_state(graph, NULL);
+}
+
+ReachabilityResult graph_dfs(const Graph *graph) {
+    return graph_dfs_state(graph, NULL);
 }

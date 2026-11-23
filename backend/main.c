@@ -1,47 +1,131 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 #include "graph/graph.h"
 #include "graph/parser.h"
 #include "graph/traversal.h"
 #include "graph/export.h"
-#include "simulation/failure.h"
+#include "simulation/state.h"
+
+static int apply_links(
+    NetworkState *state,
+    const Graph *graph,
+    const char *ids,
+    int close_links
+) {
+    if (!ids || !*ids || strcmp(ids, "-") == 0)
+        return 1;
+
+    size_t length = strlen(ids);
+    char *copy = malloc(length + 1);
+
+    if (!copy) return 0;
+
+    memcpy(copy, ids, length + 1);
+
+    char *cursor = copy;
+
+    while (*cursor) {
+        char *separator = strchr(cursor, ',');
+
+        if (separator)
+            *separator = '\0';
+
+        if (!*cursor) {
+            free(copy);
+            return 0;
+        }
+
+        int success = close_links
+            ? network_state_close_link(
+                state, graph, cursor)
+            : network_state_fail_link(
+                state, graph, cursor);
+
+        if (!success) {
+            fprintf(stderr,
+                "Invalid or conflicting link: %s\n",
+                cursor);
+            free(copy);
+            return 0;
+        }
+
+        if (!separator)
+            break;
+
+        cursor = separator + 1;
+    }
+
+    free(copy);
+    return 1;
+}
 
 int main(int argc, char *argv[]) {
     const char *dataset =
-        argc >= 2 ? argv[1] : "datasets/Net3.inp";
+        argc > 1 ? argv[1] : "datasets/Net3.inp";
 
-    Graph *g = parse_epanet(dataset);
-    if (!g) return EXIT_FAILURE;
-
-    if (argc >= 3 && strcmp(argv[2], "-") != 0) {
-        if (!fail_pipe(g, argv[2])) {
-            fprintf(stderr, "Unknown link: %s\n", argv[2]);
-            graph_free(g);
-            return EXIT_FAILURE;
-        }
-
-        printf("Simulated failure: %s\n", argv[2]);
-    }
-
-    ReachabilityResult r = graph_bfs(g);
-
-    printf("Connected nodes: %d\n", r.connected_count);
-    printf("Disconnected nodes: %d\n", r.disconnected_count);
-    printf("Disconnected demand: %.2f\n",
-           r.disconnected_demand);
+    const char *failures =
+        argc > 2 ? argv[2] : "-";
 
     const char *output =
-        argc >= 4 ? argv[3] : "build/network.json";
+        argc > 3 ? argv[3] : "build/network.json";
 
-    if (!graph_export_json(g, output)) {
-        fprintf(stderr, "JSON export failed\n");
-        graph_free(g);
+    const char *closures =
+        argc > 4 ? argv[4] : "-";
+
+    Graph *graph = parse_epanet(dataset);
+    if (!graph) return EXIT_FAILURE;
+
+    NetworkState *state = calloc(1, sizeof(NetworkState));
+    if (!state) {
+        graph_free(graph);
         return EXIT_FAILURE;
     }
 
-    printf("Exported network to %s\n", output);
+    network_state_init(state);
 
-    graph_free(g);
+    if (!apply_links(state, graph, failures, 0) ||
+        !apply_links(state, graph, closures, 1)) {
+        free(state);
+        graph_free(graph);
+        return EXIT_FAILURE;
+    }
+
+    ReachabilityResult bfs =
+        graph_bfs_state(graph, state);
+
+    ReachabilityResult dfs =
+        graph_dfs_state(graph, state);
+
+    if (bfs.connected_count != dfs.connected_count ||
+        bfs.disconnected_count != dfs.disconnected_count) {
+        fprintf(stderr, "BFS/DFS consistency failure\n");
+        free(state);
+        graph_free(graph);
+        return EXIT_FAILURE;
+    }
+
+    printf("Connected nodes: %d\n",
+        bfs.connected_count);
+
+    printf("Disconnected nodes: %d\n",
+        bfs.disconnected_count);
+
+    printf("Disconnected demand: %.2f\n",
+        bfs.disconnected_demand);
+
+    if (!graph_export_json_state(
+            graph, state, output)) {
+        fprintf(stderr, "JSON export failed\n");
+        free(state);
+        graph_free(graph);
+        return EXIT_FAILURE;
+    }
+
+    printf("Exported to %s\n", output);
+
+    free(state);
+    graph_free(graph);
     return EXIT_SUCCESS;
 }

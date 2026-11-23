@@ -57,7 +57,11 @@ class ValveWiseHandler(SimpleHTTPRequestHandler):
         params = parse_qs(query)
 
         dataset_name = params.get("dataset", ["test"])[0]
-        failure = params.get("failure", ["-"])[0]
+        failure = params.get(
+            "failures",
+            params.get("failure", ["-"])
+        )[0]
+        closures = params.get("closures", ["-"])[0]
 
         if dataset_name not in DATASETS:
             return self.send_json(
@@ -66,8 +70,14 @@ class ValveWiseHandler(SimpleHTTPRequestHandler):
             )
 
         if (
-            len(failure) > MAX_FAILURE_ID_LENGTH
-            or not failure
+            not failure
+            or not closures
+            or len(failure) > 4096
+            or len(closures) > 4096
+            or any(len(part) > MAX_FAILURE_ID_LENGTH
+                   for part in failure.split(","))
+            or any(len(part) > MAX_FAILURE_ID_LENGTH
+                   for part in closures.split(","))
         ):
             return self.send_json(
                 400,
@@ -93,7 +103,8 @@ class ValveWiseHandler(SimpleHTTPRequestHandler):
                 str(ENGINE),
                 str(DATASETS[dataset_name]),
                 failure,
-                str(output_path)
+                str(output_path),
+                closures
             ]
 
             result = subprocess.run(
@@ -121,6 +132,12 @@ class ValveWiseHandler(SimpleHTTPRequestHandler):
             data["dataset"] = dataset_name
             data["simulated_failure"] = (
                 None if failure == "-" else failure
+            )
+            data["simulated_failures"] = (
+                [] if failure == "-" else failure.split(",")
+            )
+            data["simulated_closures"] = (
+                [] if closures == "-" else closures.split(",")
             )
 
             return self.send_json(200, data)
