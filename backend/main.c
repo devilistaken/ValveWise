@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "graph/graph.h"
 #include "graph/parser.h"
 #include "graph/traversal.h"
@@ -13,7 +14,7 @@ int main(int argc, char *argv[]) {
     Graph *g = parse_epanet(dataset);
     if (!g) return EXIT_FAILURE;
 
-    if (argc >= 3) {
+    if (argc >= 3 && strcmp(argv[2], "-") != 0) {
         if (!fail_pipe(g, argv[2])) {
             fprintf(stderr, "Unknown link: %s\n", argv[2]);
             graph_free(g);
