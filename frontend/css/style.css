@@ -647,3 +647,25 @@ footer {
         grid-template-columns: 1fr;
     }
 }
+
+.optimizer-network-wrap {
+    background:
+        radial-gradient(circle at center, #18263d, #0b1422 75%);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    margin: 15px 0 30px;
+    height: 480px;
+}
+
+#optimizedNetwork {
+    width: 100%;
+    height: 100%;
+}
+
+.optimizer-description {
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.7;
+}
+

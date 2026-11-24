@@ -62,6 +62,17 @@
         </div>
       </div>
 
+      <h4>Optimized Network Visualization</h4>
+      <p class="optimizer-description">
+        Red = failed pipeline · Turquoise = proposed new valve ·
+        Orange = existing valve · Green = water source
+      </p>
+      <div class="optimizer-network-wrap">
+        <svg id="optimizedNetwork"
+             viewBox="0 0 1000 560"
+             xmlns="http://www.w3.org/2000/svg"></svg>
+      </div>
+
       <h4>Algorithm Comparison</h4>
       <div id="optAlgorithms" class="optimizer-results"></div>
     `;
@@ -84,7 +95,191 @@
         $(id).textContent = lines.join("\n");
     }
 
+
+    function drawOptimizedNetwork(data) {
+        const svg = $("optimizedNetwork");
+        if (!svg) return;
+
+        svg.replaceChildren();
+
+        const graph = data.graph || {};
+        const nodes = graph.nodes || [];
+        const links = graph.links || [];
+
+        if (!nodes.length) return;
+
+        const optimization = data.optimization || {};
+        const greedy = optimization.greedy || {};
+
+        const selected = new Set(greedy.placed_valves || []);
+        const failed = new Set(
+            (data.isolation || {}).failed_links || []
+        );
+        const closed = new Set(
+            (data.isolation || {}).valves_to_close || []
+        );
+
+        const NS = "http://www.w3.org/2000/svg";
+
+        function element(tag, attrs = {}) {
+            const node = document.createElementNS(NS, tag);
+
+            for (const [key, value] of Object.entries(attrs)) {
+                node.setAttribute(key, value);
+            }
+
+            return node;
+        }
+
+        const xs = nodes.map(n => Number(n.x) || 0);
+        const ys = nodes.map(n => Number(n.y) || 0);
+
+        const minX = Math.min(...xs);
+        const maxX = Math.max(...xs);
+        const minY = Math.min(...ys);
+        const maxY = Math.max(...ys);
+
+        const width = Math.max(maxX - minX, 1);
+        const height = Math.max(maxY - minY, 1);
+
+        const scale = Math.min(850 / width, 430 / height);
+
+        const offsetX = (1000 - width * scale) / 2;
+        const offsetY = (560 - height * scale) / 2;
+
+        const positions = new Map();
+
+        nodes.forEach((node, index) => {
+            const hasPosition =
+                width > 1 || height > 1;
+
+            const angle =
+                2 * Math.PI * index / nodes.length;
+
+            positions.set(node.id, hasPosition ? {
+                x: offsetX + (Number(node.x) - minX) * scale,
+                y: 560 - (
+                    offsetY + (Number(node.y) - minY) * scale
+                )
+            } : {
+                x: 500 + 200 * Math.cos(angle),
+                y: 280 + 180 * Math.sin(angle)
+            });
+        });
+
+        const edges = element("g");
+        const vertices = element("g");
+        const annotations = element("g");
+
+        for (const link of links) {
+            const a = positions.get(link.from_id);
+            const b = positions.get(link.to_id);
+
+            if (!a || !b) continue;
+
+            const recommended = selected.has(link.id);
+            const broken = failed.has(link.id);
+            const existing =
+                link.has_valve ||
+                String(link.link_type).toUpperCase() === "VALVE";
+
+            let color = "#6884a7";
+            let strokeWidth = "2.5";
+            let dash = "";
+
+            if (existing) {
+                color = "#f5b665";
+                strokeWidth = "4";
+            }
+
+            if (closed.has(link.id)) {
+                color = "#f5b665";
+                dash = "6 5";
+            }
+
+            if (recommended) {
+                color = "#49e0ca";
+                strokeWidth = "6";
+            }
+
+            if (broken) {
+                color = "#fb6577";
+                strokeWidth = "6";
+                dash = "8 5";
+            }
+
+            const line = element("line", {
+                x1: a.x,
+                y1: a.y,
+                x2: b.x,
+                y2: b.y,
+                stroke: color,
+                "stroke-width": strokeWidth,
+                "stroke-dasharray": dash,
+                "stroke-linecap": "round"
+            });
+
+            const title = element("title");
+            title.textContent =
+                `${link.id}: ${link.from_id} → ${link.to_id}` +
+                (recommended ? " | Recommended new valve" : "") +
+                (broken ? " | Failed" : "");
+
+            line.appendChild(title);
+            edges.appendChild(line);
+
+            if (recommended || broken || existing) {
+                const x = (a.x + b.x) / 2;
+                const y = (a.y + b.y) / 2;
+
+                const label = element("text", {
+                    x,
+                    y: y - 12,
+                    fill: color,
+                    "font-size": "17",
+                    "font-weight": "700",
+                    "text-anchor": "middle"
+                });
+
+                label.textContent = link.id;
+                annotations.appendChild(label);
+            }
+        }
+
+        for (const node of nodes) {
+            const pos = positions.get(node.id);
+            const source =
+                Boolean(node.is_source) ||
+                /RESERVOIR|TANK/i.test(node.type || "");
+
+            const circle = element("circle", {
+                cx: pos.x,
+                cy: pos.y,
+                r: source ? 10 : 7,
+                fill: source ? "#45d69b" : "#699bff",
+                stroke: "#dbeaff",
+                "stroke-width": source ? 2.5 : 1
+            });
+
+            vertices.appendChild(circle);
+
+            const label = element("text", {
+                x: pos.x + 10,
+                y: pos.y - 10,
+                fill: "#e4edff",
+                "font-size": "16"
+            });
+
+            label.textContent = node.id;
+            annotations.appendChild(label);
+        }
+
+        svg.append(edges, vertices, annotations);
+    }
+
     function render(data) {
+        drawOptimizedNetwork(data);
+
         const iso = data.isolation || {};
         const structural = data.structural || {};
         const optimization = data.optimization || {};
