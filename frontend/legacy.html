@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1">
+    <title>ValveWise | Network Resilience Laboratory</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="app">
+    <aside class="sidebar">
+        <div class="brand">
+            <div class="brand-icon">V</div>
+            <div>
+                <h1>ValveWise</h1>
+                <p>NETWORK RESILIENCE LAB</p>
+            </div>
+        </div>
+
+        <div class="sidebar-section">
+            <div class="section-label">NETWORK DATASET</div>
+            <select id="dataset">
+                <option value="test">Test Network</option>
+                <option value="net3">EPANET Net3</option>
+            </select>
+        </div>
+
+        <div class="sidebar-section">
+            <div class="section-label">FAILURE SIMULATION</div>
+
+            <label for="pipeSearch">Select pipeline</label>
+            <input id="pipeSearch"
+                   placeholder="Search pipe ID..."
+                   autocomplete="off">
+
+            <select id="pipeSelect" size="7"></select>
+
+            <label for="multiFailures">Failed link IDs (comma-separated)</label>
+            <input id="multiFailures"
+                   placeholder="e.g. P1,P3"
+                   autocomplete="off">
+
+            <label for="closedLinks">Proposed closed link IDs</label>
+            <input id="closedLinks"
+                   placeholder="e.g. P2"
+                   autocomplete="off">
+
+            <button id="simulateBtn" class="primary">
+                Simulate Pipe Failure
+            </button>
+
+            <button id="runScenarioBtn" class="secondary">
+                Run Multi-Link Scenario
+            </button>
+
+            <button id="resetBtn" class="secondary">
+                Reset Network
+            </button>
+
+            <div id="simulationStatus" class="status">
+                Network ready
+            </div>
+        </div>
+
+        <div class="sidebar-section">
+            <div class="section-label">VISUALIZATION</div>
+            <label class="toggle">
+                <input id="labelsToggle" type="checkbox">
+                Show junction labels
+            </label>
+            <label class="toggle">
+                <input id="pipeLabelsToggle" type="checkbox">
+                Show pipe IDs
+            </label>
+        </div>
+
+        <div class="sidebar-section legend">
+            <div class="section-label">LEGEND</div>
+            <div><span class="dot source"></span> Water source</div>
+            <div><span class="dot reachable"></span> Connected junction</div>
+            <div><span class="dot disconnected"></span> Disconnected junction</div>
+            <div><span class="line normal"></span> Connection</div>
+            <div><span class="line failed"></span> Failed pipeline</div>
+        </div>
+
+        <div class="sidebar-bottom">
+            Graph engine: C
+            <br>
+            Algorithms: BFS / DFS / Hashing
+            <br>
+            Simulation: Topological connectivity
+        </div>
+    </aside>
+
+    <main class="main">
+        <header class="topbar">
+            <div>
+                <div class="eyebrow">INFRASTRUCTURE ANALYSIS</div>
+                <h2>Water Network Overview</h2>
+                <p>Graph-based failure simulation and connectivity analysis</p>
+            </div>
+            <div class="engine-badge">
+                <span class="live-dot"></span>
+                C ENGINE
+            </div>
+        </header>
+
+        <section class="metrics">
+            <div class="metric">
+                <span>Total Junctions / Nodes</span>
+                <strong id="totalNodes">—</strong>
+            </div>
+            <div class="metric">
+                <span>Total Network Links</span>
+                <strong id="totalLinks">—</strong>
+            </div>
+            <div class="metric">
+                <span>Connected Nodes</span>
+                <strong id="connectedNodes">—</strong>
+            </div>
+            <div class="metric danger-metric">
+                <span>Disconnected Nodes</span>
+                <strong id="disconnectedNodes">—</strong>
+            </div>
+            <div class="metric">
+                <span>Disconnected Demand</span>
+                <strong id="disconnectedDemand">—</strong>
+            </div>
+        </section>
+
+        <section class="metrics">
+            <div class="metric">
+                <span>Demand Junctions</span>
+                <strong id="junctionCount">—</strong>
+            </div>
+            <div class="metric">
+                <span>Water Sources</span>
+                <strong id="sourceCount">—</strong>
+            </div>
+            <div class="metric">
+                <span>Disconnected Junctions</span>
+                <strong id="junctionsLost">—</strong>
+            </div>
+            <div class="metric">
+                <span>Junction Connectivity</span>
+                <strong id="junctionPercent">—</strong>
+            </div>
+            <div class="metric">
+                <span>Demand Connectivity</span>
+                <strong id="demandPercent">—</strong>
+            </div>
+        </section>
+
+        <section class="workspace">
+            <div class="panel network-panel">
+                <div class="panel-heading">
+                    <div>
+                        <h3>Network Topology</h3>
+                        <p>Click a pipeline to inspect or simulate failure</p>
+                    </div>
+                    <div class="zoom-controls">
+                        <button id="zoomIn">+</button>
+                        <button id="zoomOut">−</button>
+                        <button id="fitBtn">Fit</button>
+                    </div>
+                </div>
+
+                <div id="graphContainer">
+                    <svg id="networkSvg"
+                         xmlns="http://www.w3.org/2000/svg">
+                    </svg>
+                    <div id="graphLoading" class="loading">
+                        Loading network...
+                    </div>
+                </div>
+
+                <div class="network-footer">
+                    <span id="datasetLabel">Dataset: —</span>
+                    <span>Graph connectivity model</span>
+                </div>
+            </div>
+
+            <div class="panel detail-panel">
+                <div class="panel-heading">
+                    <div>
+                        <h3>Failure Analysis</h3>
+                        <p>Live backend results</p>
+                    </div>
+                </div>
+
+                <div class="detail-content">
+                    <div class="detail-label">SELECTED PIPELINE</div>
+                    <strong id="selectedPipe">None</strong>
+
+                    <div class="detail-label">CURRENT FAILURE</div>
+                    <strong id="currentFailure">No active failure</strong>
+
+                    <div class="detail-label">CONNECTIVITY</div>
+                    <div class="progress">
+                        <div id="connectivityBar"></div>
+                    </div>
+                    <p id="connectivityText">Awaiting network data</p>
+
+                    <div class="detail-label">PIPELINE INFORMATION</div>
+                    <div id="pipeInformation" class="info-list">
+                        Select a pipeline from the network.
+                    </div>
+
+                    <div class="analysis-note">
+                        <strong>Simulation scope</strong>
+                        <p>
+                            Results measure graph reachability
+                            after removing a failed link.
+                            Valve isolation and hydraulic
+                            pressure are not yet evaluated.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <footer>
+            ValveWise · DSA-Based Water Network Resilience Simulator
+        </footer>
+    </main>
+</div>
+
+<script src="/js/comparison.js"></script>
+<script src="/js/network.js"></script>
+<script src="/js/optimizer.js"></script>
+</body>
+</html>

@@ -4,3 +4,9 @@ build/
 *.o
 *.out
 *.exe
+__pycache__/
+*.pyc
+integration/reference/teammate/backend/valvewise
+integration/reference/teammate/backend/output.json
+integration/reference/teammate/backend/test_output.json
+integration/reference/teammate/backend/test_multi.json

@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ValveWise | Unified Resilience Lab</title>
+<link rel="stylesheet" href="/css/style.css">
+<link rel="stylesheet" href="/css/unified.css">
+</head>
+<body>
+<div class="unified-layout">
+  <aside class="unified-sidebar">
+    <div class="brand">
+      <div class="brand-icon">V</div>
+      <div>
+        <h1>ValveWise</h1>
+        <p>UNIFIED RESILIENCE LAB</p>
+      </div>
+    </div>
+
+    <form id="scenarioForm" class="scenario-form">
+      <h3>Network configuration</h3>
+
+      <label for="datasetInput">Dataset</label>
+      <select id="datasetInput">
+        <option value="demo">Resilience Demo</option>
+        <option value="sample">Sample Network</option>
+        <option value="image3">Image 3 Network</option>
+      </select>
+
+      <label for="failureInput">Failed pipelines</label>
+      <input id="failureInput" placeholder="P2 or P2,P3" value="P2">
+
+      <label for="stuckInput">Stuck-open valves</label>
+      <input id="stuckInput" placeholder="V1">
+
+      <label for="budgetInput">New valve budget</label>
+      <input id="budgetInput" type="number"
+             min="0" max="20" value="1">
+
+      <button type="submit" class="primary">
+        Run Complete Analysis
+      </button>
+
+      <button id="resetScenario" type="button" class="secondary">
+        Reset Scenario
+      </button>
+
+      <p id="runStatus" class="status" role="status">
+        Ready to analyze.
+      </p>
+    </form>
+
+    <div class="sidebar-section">
+      <div class="section-label">NETWORK LEGEND</div>
+      <div class="unified-legend">
+        <span><i class="legend-dot source-color"></i> Water source</span>
+        <span><i class="legend-dot demand-color"></i> Connected</span>
+        <span><i class="legend-dot lost-color"></i> Disconnected</span>
+        <span><i class="legend-dot failed-color"></i> Failed pipe</span>
+        <span><i class="legend-dot proposed-color"></i> New valve</span>
+        <span><i class="legend-dot existing-color"></i> Existing valve</span>
+      </div>
+    </div>
+
+    <div class="sidebar-bottom">
+      C11 Graph + BFS/DFS + Tarjan
+      <p>Greedy · Random · Topology · Exhaustive</p>
+      <a href="/legacy.html">Open original network lab</a>
+    </div>
+  </aside>
+
+  <main class="unified-main">
+    <header class="unified-header">
+      <div>
+        <div class="eyebrow">WATER INFRASTRUCTURE INTELLIGENCE</div>
+        <h2>Network Resilience Optimizer</h2>
+        <p>Simulate pipe failures, evaluate isolation and optimize valve placement.</p>
+      </div>
+      <span class="engine-badge">C ENGINE</span>
+    </header>
+
+    <section class="unified-metrics" id="metrics"></section>
+
+    <section class="unified-panel">
+      <div class="unified-panel-head">
+        <div>
+          <h3>Interactive Network</h3>
+          <p>Click a pipe to select its failure scenario. New valves are highlighted after optimization.</p>
+        </div>
+        <button id="fitGraph" class="small-action" type="button">Fit network</button>
+      </div>
+      <div class="unified-graph">
+        <svg id="graphSvg" viewBox="0 0 1000 600"
+             xmlns="http://www.w3.org/2000/svg"></svg>
+      </div>
+      <div id="selectionInfo" class="unified-selection">
+        Select a pipeline to inspect its details.
+      </div>
+    </section>
+
+    <section class="unified-two-columns">
+      <div class="unified-panel">
+        <div class="unified-panel-head"><h3>Isolation Analysis</h3></div>
+        <div id="isolationOutput" class="unified-content">
+          Run a scenario to see isolation results.
+        </div>
+      </div>
+      <div class="unified-panel">
+        <div class="unified-panel-head"><h3>Before vs After Optimization</h3></div>
+        <div id="comparisonOutput" class="unified-content">
+          No optimization results yet.
+        </div>
+      </div>
+    </section>
+
+    <section class="unified-panel">
+      <div class="unified-panel-head">
+        <div>
+          <h3>Algorithm Benchmark</h3>
+          <p>Results generated from the same network and selected failure scenario.</p>
+        </div>
+      </div>
+      <div id="benchmarkOutput" class="unified-content"></div>
+    </section>
+
+    <section class="unified-two-columns">
+      <div class="unified-panel">
+        <div class="unified-panel-head"><h3>Critical Infrastructure</h3></div>
+        <div id="criticalOutput" class="unified-content"></div>
+      </div>
+      <div class="unified-panel">
+        <div class="unified-panel-head"><h3>Affected Junctions</h3></div>
+        <div id="affectedOutput" class="unified-content"></div>
+      </div>
+    </section>
+
+    <div class="unified-actions">
+      <button id="exportJson" type="button" class="secondary">Export JSON</button>
+      <button id="exportCsv" type="button" class="secondary">Export CSV</button>
+    </div>
+
+    <p class="scope-note">
+      Research prototype: topological reachability and estimated isolation disruption.
+      No hydraulic pressure or flow calculations are performed by this dashboard.
+      Infeasible isolation is penalized by the current optimization model.
+    </p>
+  </main>
+</div>
+<script src="/js/unified.js"></script>
+</body>
+</html>
