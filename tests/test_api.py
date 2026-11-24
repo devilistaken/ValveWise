@@ -116,7 +116,7 @@ class TestValveWiseAPI(unittest.TestCase):
             html = response.read().decode("utf-8")
 
         self.assertIn("ValveWise", html)
-        self.assertIn("networkSvg", html)
+        self.assertIn("graphSvg", html)
 
 
 if __name__ == "__main__":

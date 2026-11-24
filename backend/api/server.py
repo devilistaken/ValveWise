@@ -26,6 +26,25 @@ DATASETS = {
 MAX_FAILURE_ID_LENGTH = 63
 
 
+def dataset_link_ids(path):
+    sections = {"PIPES": set(), "VALVES": set(), "PUMPS": set()}
+    section = None
+
+    for raw in path.read_text(encoding="utf-8").splitlines():
+        line = raw.split(";", 1)[0].strip()
+        if not line:
+            continue
+
+        if line.startswith("[") and "]" in line:
+            section = line[1:line.index("]")].upper()
+            continue
+
+        if section in sections:
+            sections[section].add(line.split()[0])
+
+    return sections
+
+
 class ValveWiseHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(
@@ -94,6 +113,47 @@ class ValveWiseHandler(SimpleHTTPRequestHandler):
                 return self.send_json(
                     400, {"error": "Invalid link ID list"}
                 )
+
+        link_ids = dataset_link_ids(OPTIMIZER_DATASETS[dataset])
+        valid_failures = link_ids["PIPES"]
+        valid_valves = link_ids["VALVES"]
+
+        requested_failures = (
+            failures.split(",") if failures else []
+        )
+        requested_stuck = (
+            stuck.split(",") if stuck else []
+        )
+
+        unknown_failures = sorted(
+            set(requested_failures) - valid_failures
+        )
+        unknown_valves = sorted(
+            set(requested_stuck) - valid_valves
+        )
+
+        if unknown_failures:
+            return self.send_json(
+                400,
+                {"error": "Unknown pipe IDs: " +
+                    ", ".join(unknown_failures)}
+            )
+
+        if unknown_valves:
+            return self.send_json(
+                400,
+                {"error": "Unknown valve IDs: " +
+                    ", ".join(unknown_valves)}
+            )
+
+        max_candidates = len(valid_failures)
+
+        if budget > max_candidates:
+            return self.send_json(
+                400,
+                {"error":
+                    f"Budget exceeds {max_candidates} pipe candidates"}
+            )
 
         if not OPTIMIZER_ENGINE.is_file():
             return self.send_json(

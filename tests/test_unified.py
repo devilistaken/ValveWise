@@ -70,7 +70,7 @@ class UnifiedTests(unittest.TestCase):
         with urlopen(self.base + "/", timeout=10) as response:
             html = response.read().decode()
 
-        self.assertIn("/js/optimizer.js", html)
+        self.assertIn("/js/unified.js", html)
 
 
 if __name__ == "__main__":
