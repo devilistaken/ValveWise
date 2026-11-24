@@ -16,13 +16,14 @@
       <div class="optimizer-controls">
         <label>Network
           <select id="optDataset">
+            <option value="demo">Resilience Demo (Verified Scenario)</option>
             <option value="sample">Sample Network</option>
             <option value="image3">Image 3 Network</option>
           </select>
         </label>
 
         <label>Failed pipe IDs
-          <input id="optFailure" value="P5"
+          <input id="optFailure" value="P2"
                  placeholder="P5 or P3,P7">
         </label>
 

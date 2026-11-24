@@ -42,15 +42,8 @@ V1               J6           J7           100.0        TCV          0.0        
 V2               J2           J5           150.0        PRV          30.0         0.0
 
 [DEMANDS]
-;Junction        Demand       Pattern      Category
-J1               10.5
-J2               15.0
-J3               8.0
-J4               12.0
-J5               14.5
-J6               7.0
-J7               11.0
-J8               9.0
+; No additional demand categories in this sample.
+; Junction base demands are specified in [JUNCTIONS].
 
 [COORDINATES]
 ;Node            X-Coord      Y-Coord

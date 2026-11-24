@@ -199,7 +199,7 @@ PlacementResult *optimize_greedy(Graph *g, int budget,
     long candidates = 0;
 
     for (int round = 0; round < budget; round++) {
-        double best_gain = -1.0;
+        double best_gain = 1e-9;
         int    best_link = -1;
 
         for (int i = 0; i < g->link_count; i++) {
@@ -472,6 +472,19 @@ OptimizationReport *run_full_optimization(Graph *g, int budget,
     report->greedy     = optimize_greedy(g, budget, failure_scenarios, scenario_count);
     report->random_pl  = optimize_random(g, budget, failure_scenarios, scenario_count, seed);
     report->topology   = optimize_topology(g, budget, sr);
+    if (report->topology) {
+        PlacementResult *p = report->topology;
+        p->baseline_disruption = compute_total_disruption(
+            g, NULL, 0, failure_scenarios, scenario_count);
+        p->total_disruption = compute_total_disruption(
+            g, p->placed_valves, p->placed_count,
+            failure_scenarios, scenario_count);
+        p->improvement_pct = p->baseline_disruption > 0.0
+            ? 100.0 * (p->baseline_disruption -
+                       p->total_disruption) /
+                       p->baseline_disruption
+            : 0.0;
+    }
     report->exhaustive = optimize_exhaustive(g, budget, failure_scenarios, scenario_count);
     return report;
 }

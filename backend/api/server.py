@@ -15,6 +15,7 @@ OPTIMIZER_ENGINE = (
 OPTIMIZER_DATASETS = {
     "sample": ROOT / "integration/reference/teammate/data/sample.inp",
     "image3": ROOT / "integration/reference/teammate/data/net_image3.inp",
+    "demo": ROOT / "integration/reference/teammate/data/resilience_demo.inp",
 }
 
 DATASETS = {
