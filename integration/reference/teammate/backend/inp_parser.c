@@ -20,7 +20,7 @@
 #  define vw_strcasecmp(a,b) _stricmp((a),(b))
 #else
 #  include <strings.h>
-#  define vw_strcasecmp(a,b) vw_strcasecmp((a),(b))
+#  define vw_strcasecmp(a,b) strcasecmp((a),(b))
 #endif
 
 #define LINE_BUF 512
